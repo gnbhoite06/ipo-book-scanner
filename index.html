@@ -11,6 +11,7 @@
   :root {
     --bg: #fbfbfa; --fg: #16181a; --muted: #73777b; --faint: #a3a7aa; --line: #e8e8e5; --soft: #f2f2ef;
     --accent: #1f5f8b; --pos: #18794e; --neg: #b3372c; --warn: #9a6512;
+    --pos-bg: #e3f3ea; --neg-bg: #fbe6e3; --warn-bg: #fbf0dc; --none-bg: #ececea;
     --sans: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
     padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -18,12 +19,14 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #0f1112; --fg: #e9eaeb; --muted: #969a9e; --faint: #62676b; --line: #23272a; --soft: #181b1d;
-      --accent: #7db4dc; --pos: #5cc48c; --neg: #ef8073; --warn: #e0ad52; color-scheme: dark;
+      --accent: #7db4dc; --pos: #5cc48c; --neg: #ef8073; --warn: #e0ad52;
+    --pos-bg: #15301f; --neg-bg: #3a1a17; --warn-bg: #33270f; --none-bg: #23272a; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #0f1112; --fg: #e9eaeb; --muted: #969a9e; --faint: #62676b; --line: #23272a; --soft: #181b1d;
-    --accent: #7db4dc; --pos: #5cc48c; --neg: #ef8073; --warn: #e0ad52; color-scheme: dark;
+    --accent: #7db4dc; --pos: #5cc48c; --neg: #ef8073; --warn: #e0ad52;
+    --pos-bg: #15301f; --neg-bg: #3a1a17; --warn-bg: #33270f; --none-bg: #23272a; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
@@ -73,8 +76,16 @@
   section.block { margin-top: 44px; }
   .result-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
   .result-head h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
-  .call { font-size: 14px; color: var(--muted); }
-  .call b { color: var(--fg); font-weight: 600; }
+  .call { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 14px; color: var(--muted); }
+  .badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; background: var(--none-bg); color: var(--fg); }
+  .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .badge.pos { background: var(--pos-bg); color: var(--pos); }
+  .badge.neg { background: var(--neg-bg); color: var(--neg); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.none { color: var(--muted); }
+  .result-head { border-left: 4px solid var(--line); padding-left: 16px; }
+  .result-head.pos { border-left-color: var(--pos); } .result-head.neg { border-left-color: var(--neg); } .result-head.warn { border-left-color: var(--warn); }
+  .result-head.pos, .result-head.neg, .result-head.warn { color: var(--fg); }
   .figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); border-bottom: 1px solid var(--line); }
   .fig { padding: 16px 0; min-width: 0; }
   .fig .k { font-size: 12px; color: var(--muted); }
@@ -369,7 +380,7 @@ function run() {
   const row = (k, f) => `<tr><td>${k}</td><td class="n">${f(inBucket)}</td><td class="n">${f(inBand)}</td></tr>`;
 
   $("out").innerHTML = `
-    <div class="result-head"><h3>${name}</h3><div class="call">${label} · framework expects <b class="${cls}">${exp}</b></div></div>
+    <div class="result-head ${cls}"><h3>${name}</h3><div class="call">${label}<span class="badge ${cls || "none"}">${exp[0].toUpperCase() + exp.slice(1)}</span></div></div>
     <div class="figs">
       <div class="fig"><div class="k">P(open +20%), total only</div><div class="v">${pc(p)}</div></div>
       <div class="fig"><div class="k">Retail / QIB</div><div class="v">${ratio(ri, q)}</div></div>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>IPO Book Scanner</title>
-<meta name="description" content="Compare an Indian IPO subscription book with similar historical books. Research only, not investment advice.">
+<meta name="description" content="Compare an Indian IPO subscription book with similar historical books. For research only. Not investment advice. Not SEBI registered.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
@@ -46,6 +46,9 @@
   nav a:hover { color: var(--fg); }
   nav a[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); }
 
+  .disclaimer { background: var(--warn-bg); color: var(--fg); font-size: 13px; }
+  .disclaimer .wrap { padding-block: 9px; }
+  .disclaimer b { font-weight: 600; }
   main { padding-block: 40px 64px; }
   h1 { font-size: clamp(26px, 4.5vw, 34px); line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
   h2 { font-size: 13px; font-weight: 500; color: var(--muted); margin: 0 0 12px; letter-spacing: .01em; }
@@ -138,6 +141,7 @@
   <a class="brand" href="#scanner">IPO Book Scanner</a>
   <nav aria-label="Views"><a href="#scanner" id="tab-scanner">Scanner</a><a href="#method" id="tab-method">Method</a></nav>
 </div></header>
+<div class="disclaimer" role="note"><div class="wrap"><b>Not investment advice. Not SEBI registered.</b> For research and education only.</div></div>
 
 <main id="view-scanner"><div class="wrap">
   <div class="intro">
@@ -168,6 +172,7 @@
 <main id="view-method" hidden><div class="wrap"><article class="prose">
   <div class="kicker">Method · November 2026</div>
   <h1>Reading the IPO book</h1>
+  <p class="note" style="margin-top:14px"><b>Not investment advice. Not SEBI registered.</b> The author is not registered with SEBI as an investment adviser or research analyst. This is personal research for education only.</p>
   <p class="lede">How one question about an SME IPO became a framework for reading who is in a book, why I backtested it instead of trusting it, and the logic behind each step.</p>
 
   <div class="step">
@@ -308,7 +313,7 @@
 </article></div></main>
 
 <footer><div class="wrap">
-  <p>For research purposes only. Historical outcomes describe past listings. Nothing here is investment advice or a recommendation to apply for, buy or sell any security.</p>
+  <p><b>Disclaimer.</b> Not investment advice. The author is not registered with SEBI as an investment adviser (IA) or research analyst (RA). This site is personal research for educational purposes only. Historical outcomes describe past listings and do not predict future ones. Nothing here is a recommendation to apply for, buy, sell or hold any security. Data may be incomplete or wrong. Do your own research and consult a SEBI registered adviser before investing.</p>
   <p>SME rules: Strong (QIB &gt; 80x, retail/QIB 1.5 to 8x, total &gt; 350x), Low QIB HNI-heavy (QIB &lt; 5x, NII/retail &gt; 4x), Low QIB crowd (QIB &lt; 5x, total 100x+), Weak total (&lt; 60x). Mainboard: QIB-led (retail/QIB &lt; 0.1x).</p>
 </div></footer>
 
@@ -399,6 +404,7 @@ function run() {
         ${row("Closed below its open", s => pc(s.fade))}
       </tbody></table></div>
     <p class="note">Same bucket: ${label}. Same size: total ${bandLabel}.</p>
+    <p class="note">Framework output from historical data. Not investment advice and not a recommendation. The author is not a SEBI registered investment adviser or research analyst.</p>
     ${seg === "sme" && q < 5 && t >= 100 ? `<p class="note">No SME in the data has QIB under 5x with total of 100x or more. This book is outside the backtest's range.</p>` : ""}`;
 
   const L = v => Math.log(Math.max(v, 0.01));

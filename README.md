@@ -1,3 +1,5 @@
+> **Disclaimer: not investment advice. Not SEBI registered.** The author is not registered with SEBI as an investment adviser or research analyst. Personal research for educational purposes only. Nothing here is a recommendation to apply for, buy, sell or hold any security.
+
 # IPO Book Scanner
 
 Research tool: place an Indian IPO subscription book (QIB / NII / retail / total multiples) against 1,400+ past

@@ -4,349 +4,322 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>IPO Book Scanner</title>
+<meta name="description" content="Compare an Indian IPO subscription book with similar historical books. Research only, not investment advice.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-  :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-  /* Layout: input rail on the left, verdict + comparables on the right; stacks to one column on phones. */
   :root {
-    --bg: #eef0ec; --card: #fbfcfa; --ink: #14181a; --muted: #5b6467; --line: #d6dbd5;
-    --accent: #2b5d7d; --good: #1d7a4c; --bad: #b4362b; --warn: #9a6512; --chip: #e2e7e1;
-    --display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
-    --body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
-    --num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --bg: #fbfbfa; --fg: #16181a; --muted: #73777b; --faint: #a3a7aa; --line: #e8e8e5; --soft: #f2f2ef;
+    --accent: #1f5f8b; --pos: #18794e; --neg: #b3372c; --warn: #9a6512;
+    --sans: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #101416; --card: #171c1f; --ink: #e7ece9; --muted: #95a1a4; --line: #2a3337;
-      --accent: #7fb3d5; --good: #5cc48c; --bad: #ef7d6f; --warn: #e0ad52; --chip: #212a2e; color-scheme: dark;
+      --bg: #0f1112; --fg: #e9eaeb; --muted: #969a9e; --faint: #62676b; --line: #23272a; --soft: #181b1d;
+      --accent: #7db4dc; --pos: #5cc48c; --neg: #ef8073; --warn: #e0ad52; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #101416; --card: #171c1f; --ink: #e7ece9; --muted: #95a1a4; --line: #2a3337;
-    --accent: #7fb3d5; --good: #5cc48c; --bad: #ef7d6f; --warn: #e0ad52; --chip: #212a2e; color-scheme: dark;
+    --bg: #0f1112; --fg: #e9eaeb; --muted: #969a9e; --faint: #62676b; --line: #23272a; --soft: #181b1d;
+    --accent: #7db4dc; --pos: #5cc48c; --neg: #ef8073; --warn: #e0ad52; color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
-  .wrap { max-width: 1100px; margin: 0 auto; padding-block: 28px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  h1 { font-family: var(--display); font-weight: 600; font-size: 32px; text-wrap: balance; margin: 0 0 4px; letter-spacing: -0.01em; }
-  h2 { font-family: var(--display); font-size: 19px; text-wrap: balance; margin: 0 0 12px; font-weight: 600; }
-  .sub { color: var(--muted); margin: 0 0 22px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
-  .grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
-  .grid > div { min-width: 0; }
-  @media (min-width: 860px) { .grid { grid-template-columns: 360px minmax(0, 1fr); } }
-  label { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 4px; }
-  input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .seg { display: flex; gap: 6px; margin-top: 4px; }
-  .seg button { flex: 1; padding: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; cursor: pointer; font: inherit; }
-  .seg button.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-  .go:focus-visible, .seg button:focus-visible, .live button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .go { margin-top: 14px; width: 100%; padding: 10px; border: 0; border-radius: 8px; background: var(--ink); color: var(--bg); font: 600 15px/1 inherit; cursor: pointer; }
-  .verdict { font-family: var(--num); font-size: 21px; font-weight: 500; margin: 2px 0 6px; }
-  .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--chip); }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .chip { background: var(--chip); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
-  .chip b { font-variant-numeric: tabular-nums; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-  .stat .k { font-size: 12px; color: var(--muted); }
-  .stat .v { font: 500 21px/1.3 var(--num); }
-  .tbl { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
-  td:not(:first-child), .chip b, input[type=number] { font-family: var(--num); }
-  th, td { padding: 8px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 160px; }
-  th { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
-  .pos { color: var(--good); } .neg { color: var(--bad); } .warn { color: var(--warn); }
-  .note { color: var(--muted); font-size: 13px; margin-top: 10px; }
-  .live { display: flex; flex-direction: column; gap: 6px; max-height: 330px; overflow-y: auto; }
-  .live button { text-align: left; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 8px 10px; cursor: pointer; font: inherit; font-size: 13.5px; }
-  .live button small { color: var(--muted); display: block; }
-  .empty { color: var(--muted); }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 960px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .num, td.n, th.n { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .pos { color: var(--pos); } .neg { color: var(--neg); } .warn { color: var(--warn); }
 
-  .topnav { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; max-width: 1100px; margin: 0 auto; padding-block: 14px 0;
-    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .topnav a { font: 500 13px/1 var(--num); letter-spacing: .04em; text-transform: uppercase; text-decoration: none; color: var(--muted);
-    padding: 9px 12px; border-radius: 8px; border: 1px solid transparent; }
-  .topnav a:hover { color: var(--ink); }
-  .topnav a[aria-current="page"] { color: var(--ink); background: var(--card); border-color: var(--line); }
-  .topnav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  /* write-up styles, scoped to the How it works view */
-  #view-method { color: var(--ink); font: 16px/1.65 var(--body); }
-  #view-method .wrap { max-width: 1100px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  #view-method header { display: grid; gap: 10px; max-width: 68ch; margin-bottom: 36px; }
-  #view-method .kicker { font: 500 12px/1 var(--num); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
-  #view-method h1 { font: 600 clamp(32px, 6vw, 48px)/1.05 var(--display); margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
-  #view-method .lede { font-size: 18px; color: var(--muted); margin: 0; }
-  #view-method section { display: grid; gap: 4px 32px; grid-template-columns: minmax(0, 1fr); padding-block: 28px; border-top: 1px solid var(--line); }
-  @media (min-width: 900px) { #view-method section { grid-template-columns: 170px minmax(0, 1fr); } }
-  #view-method .label { font: 500 12px/1.4 var(--num); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; padding-top: 6px; }
-  #view-method .label b { display: block; color: var(--accent); font-weight: 500; margin-bottom: 2px; }
-  #view-method .body { min-width: 0; display: grid; gap: 14px; }
-  #view-method .body > p, #view-method .body > ul, #view-method .body > h2, #view-method .body > blockquote { max-width: 68ch; margin: 0; }
-  #view-method h2 { font: 600 24px/1.2 var(--display); text-wrap: balance; }
-  #view-method ul { padding-left: 20px; display: grid; gap: 6px; }
-  #view-method strong { font-weight: 600; }
-  #view-method code, #view-method .n { font-family: var(--num); font-size: .92em; }
-  #view-method blockquote { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; font-size: 18px; font-style: italic; }
-  #view-method .tbl { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
-  #view-method table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
-  #view-method th, #view-method td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
-  #view-method tr:last-child td { border-bottom: 0; }
-  #view-method th { font: 500 11.5px/1.3 var(--num); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; background: var(--chip); }
-  #view-method td.r, #view-method th.r { text-align: right; white-space: nowrap; font-family: var(--num); }
-  #view-method .pill { display: inline-block; font: 500 11.5px/1 var(--num); padding: 4px 8px; border-radius: 999px; white-space: nowrap; background: var(--chip); }
-  #view-method .ok { color: var(--good); }
-  #view-method .no { color: var(--bad); }
-  #view-method .mix { color: var(--warn); }
-  #view-method .book { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-  #view-method .cell { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
-  #view-method .cell .k { font: 500 11.5px/1.3 var(--num); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-  #view-method .cell .v { font: 500 24px/1.25 var(--num); }
-  #view-method .cell .s { font-size: 13px; color: var(--muted); }
-  #view-method .flow { display: grid; gap: 8px; counter-reset: step; }
-  #view-method .flow div { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 10px 46px; position: relative; max-width: 68ch; }
-  #view-method .flow div::before { counter-increment: step; content: counter(step); position: absolute; left: 14px; top: 10px; font: 500 13px/1.6 var(--num); color: var(--accent); }
-  #view-method .note { font-size: 14px; color: var(--muted); }
-  #view-method a { color: var(--accent); }
-  #view-method a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* header */
+  header.top { border-bottom: 1px solid var(--line); }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; }
+  .brand { font-weight: 600; letter-spacing: -0.01em; text-decoration: none; }
+  nav { display: flex; gap: 22px; }
+  nav a { text-decoration: none; color: var(--muted); font-size: 14px; padding-block: 17px; border-bottom: 1.5px solid transparent; }
+  nav a:hover { color: var(--fg); }
+  nav a[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); }
+
+  main { padding-block: 40px 64px; }
+  h1 { font-size: clamp(26px, 4.5vw, 34px); line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+  h2 { font-size: 13px; font-weight: 500; color: var(--muted); margin: 0 0 12px; letter-spacing: .01em; }
+  .intro { display: grid; gap: 8px; margin-bottom: 32px; max-width: 62ch; }
+  .intro p { margin: 0; color: var(--muted); }
+
+  /* input */
+  .search { width: 100%; font: inherit; font-size: 16px; padding: 13px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); }
+  .search:focus { border-color: var(--faint); outline: none; }
+  .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px; margin-top: 16px; }
+  .toggle { display: inline-flex; padding: 3px; background: var(--soft); border-radius: 8px; }
+  .toggle button { font: inherit; font-size: 13.5px; border: 0; background: none; color: var(--muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  .toggle button.on { background: var(--bg); color: var(--fg); box-shadow: 0 0 0 1px var(--line); }
+  .field { display: grid; gap: 4px; flex: 1 1 90px; min-width: 0; }
+  .field label { font-size: 12px; color: var(--muted); }
+  .field input { font: 14px var(--mono); width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
+  .field input:focus { border-color: var(--faint); outline: none; }
+
+  .live { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .live span { font-size: 12px; color: var(--muted); align-self: center; margin-right: 4px; }
+  .live button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: none; color: var(--fg); padding: 5px 11px; border-radius: 999px; cursor: pointer; }
+  .live button:hover { border-color: var(--faint); }
+  .live button.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .live button i { font-style: normal; color: var(--muted); margin-left: 6px; font-family: var(--mono); font-size: 12px; }
+  .live button.on i { color: inherit; opacity: .7; }
+
+  /* result */
+  section.block { margin-top: 44px; }
+  .result-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .result-head h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+  .call { font-size: 14px; color: var(--muted); }
+  .call b { color: var(--fg); font-weight: 600; }
+  .figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); border-bottom: 1px solid var(--line); }
+  .fig { padding: 16px 0; min-width: 0; }
+  .fig .k { font-size: 12px; color: var(--muted); }
+  .fig .v { font: 500 20px/1.3 var(--mono); }
+
+  .tbl { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { padding-left: 0; }
+  th:last-child, td:last-child { padding-right: 0; }
+  th { font-size: 12px; font-weight: 500; color: var(--muted); }
+  td.n, th.n { text-align: right; }
+  td.name { white-space: normal; min-width: 150px; }
+  tr.me td { font-weight: 600; }
+  tr.sum td { border-bottom: 0; color: var(--muted); }
+  tr.sum td.n { color: inherit; }
+  .yr { color: var(--muted); font-size: 12.5px; margin-left: 6px; font-family: var(--mono); }
+  .note { font-size: 13px; color: var(--muted); margin: 12px 0 0; max-width: 70ch; }
+  .empty { color: var(--muted); padding: 24px 0; margin: 0; }
+
+  footer { border-top: 1px solid var(--line); padding-block: 24px 40px; font-size: 12.5px; color: var(--muted); }
+  footer p { margin: 0 0 6px; max-width: 80ch; }
+
+  /* method */
+  .prose { max-width: 680px; }
+  .prose .kicker { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .prose .lede { font-size: 17px; color: var(--muted); margin: 14px 0 0; }
+  .step { padding-top: 40px; margin-top: 40px; border-top: 1px solid var(--line); }
+  .step .tag { font: 500 12px var(--mono); color: var(--accent); margin-bottom: 8px; }
+  .step h2 { font-size: 21px; color: var(--fg); font-weight: 600; letter-spacing: -0.015em; margin: 0 0 12px; text-wrap: balance; }
+  .step p, .step li { margin: 0 0 12px; }
+  .step ul, .step ol { padding-left: 20px; margin: 0 0 12px; }
+  .step ol li::marker { font-family: var(--mono); color: var(--muted); font-size: 13px; }
+  .step blockquote { margin: 16px 0; padding-left: 16px; border-left: 2px solid var(--accent); font-size: 17px; }
+  .step code { font-family: var(--mono); font-size: .9em; white-space: nowrap; }
+  .step .tbl { margin: 16px 0; }
+  .step td { white-space: normal; vertical-align: top; }
+  .step td.n { white-space: nowrap; }
+  .verdict-ok { color: var(--pos); font-weight: 500; } .verdict-no { color: var(--neg); font-weight: 500; } .verdict-mix { color: var(--warn); font-weight: 500; }
+  .book { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin: 16px 0; border-block: 1px solid var(--line); }
+  .book div { padding: 14px 0; }
+  .book .k { font-size: 12px; color: var(--muted); }
+  .book .v { font: 500 20px/1.3 var(--mono); }
+  .book .s { font-size: 12.5px; color: var(--muted); }
+  @media (max-width: 560px) { nav { gap: 16px; } .result-head h3 { font-size: 19px; } .hm { display: none; } td:first-child { white-space: normal; } }
 </style>
 </head>
 <body>
-<nav class="topnav" aria-label="Views">
-  <a href="#scanner" id="tab-scanner">Scanner</a>
-  <a href="#method" id="tab-method">How it works</a>
-</nav>
-<div id="view-scanner">
-<div class="wrap">
-  <h1>IPO Book Scanner</h1>
-  <p class="sub">Enter an IPO, or its subscription book, to see where it sits in the backtest and the 5 most similar historical books. <span id="asof"></span></p>
-  <p class="note" style="margin:-12px 0 20px">For research purposes only. Historical outcomes describe past listings; nothing here is investment advice or a recommendation to apply for, buy or sell any security.</p>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#scanner">IPO Book Scanner</a>
+  <nav aria-label="Views"><a href="#scanner" id="tab-scanner">Scanner</a><a href="#method" id="tab-method">Method</a></nav>
+</div></header>
 
-  <div class="grid">
-    <div>
-      <div class="card">
-        <h2>Book</h2>
-        <label for="search">Find an IPO (live or historical)</label>
-        <input id="search" list="names" placeholder="Type a company name" autocomplete="off">
-        <datalist id="names"></datalist>
-        <label>Segment</label>
-        <div class="seg"><button id="segSME" class="on" type="button">SME</button><button id="segMain" type="button">Mainboard</button></div>
-        <div class="row">
-          <div><label for="q">QIB (x)</label><input id="q" type="number" step="any" min="0"></div>
-          <div><label for="ni">NII (x)</label><input id="ni" type="number" step="any" min="0"></div>
-        </div>
-        <div class="row">
-          <div><label for="ri">Retail (x)</label><input id="ri" type="number" step="any" min="0"></div>
-          <div><label for="t">Total (x)</label><input id="t" type="number" step="any" min="0"></div>
-        </div>
-        <button class="go" id="go" type="button">Compare</button>
-      </div>
-      <div class="card">
-        <h2>Live and recent issues</h2>
-        <div class="live" id="live"></div>
-      </div>
-    </div>
-
-    <div>
-      <div class="card" id="out"><p class="empty">Pick a live issue, search for a company, or type the four multiples.</p></div>
-      <div class="card">
-        <h2>5 closest historical books</h2>
-        <div class="tbl" id="comps"><p class="empty">Nothing yet.</p></div>
-        <p class="note">Closeness is the distance between log QIB, NII, retail and total multiples, within the same segment. Returns are listing-day open and close against the issue price.</p>
-      </div>
-    </div>
+<main id="view-scanner"><div class="wrap">
+  <div class="intro">
+    <h1>How did books like this one list?</h1>
+    <p>Pick an IPO or type its subscription multiples. The scanner places it in the backtested framework and finds the five most similar historical books. <span id="asof"></span></p>
   </div>
-  <p class="note">Backtest of a subscription-ratio framework. SME rules: STRONG (QIB &gt; 80x, retail/QIB 1.5 to 8x, total &gt; 350x), LOWQIB_HNI (QIB &lt; 5x, NII/retail &gt; 4x), LOWQIB_CROWD (QIB &lt; 5x, total &ge; 100x), WEAK_TOTAL (total &lt; 60x). Mainboard: QIB_LED (retail/QIB &lt; 0.1x). For research purposes only; not investment advice.</p>
-</div>
-</div>
-<div id="view-method" hidden>
-<div class="wrap">
-  <header>
-    <div class="kicker">IPO subscription-ratio framework · Nov 2026</div>
-    <h1>Reading the IPO book</h1>
-    <p class="lede">How a question about one SME IPO turned into a framework for reading who is in an IPO book, why I backtested it instead of trusting it, and the logic behind each step.</p>
-    <p class="note">For research purposes only. Nothing here is investment advice or a recommendation to apply for, buy or sell any security.</p>
-  </header>
 
-  <section>
-    <div class="label"><b>Start</b>The question</div>
-    <div class="body">
-      <h2>Would a ₹2.5 lakh ticket scare retail away?</h2>
-      <p>Maxwell Engineering Solutions came to the NSE SME platform at ₹150 to ₹158 with a lot of 800 shares. Retail had to apply for 2 lots, so the minimum application was <span class="n">₹2,52,800</span>. My starting hypothesis was simple: a ticket that large should keep small investors out and leave the issue undersubscribed.</p>
-      <p>The goal was to use the subscription numbers by category (QIB, NII, retail, in "x" multiples) to predict how it would list on 6 November.</p>
-    </div>
-  </section>
+  <input class="search" id="search" list="names" placeholder="Search any IPO, live or historical" autocomplete="off" aria-label="Search IPO">
+  <datalist id="names"></datalist>
+  <div class="controls">
+    <div class="toggle" role="group" aria-label="Segment"><button id="segSME" class="on" type="button">SME</button><button id="segMain" type="button">Mainboard</button></div>
+    <div class="field"><label for="q">QIB</label><input id="q" type="number" step="any" min="0" inputmode="decimal"></div>
+    <div class="field"><label for="ni">NII</label><input id="ni" type="number" step="any" min="0" inputmode="decimal"></div>
+    <div class="field"><label for="ri">Retail</label><input id="ri" type="number" step="any" min="0" inputmode="decimal"></div>
+    <div class="field"><label for="t">Total</label><input id="t" type="number" step="any" min="0" inputmode="decimal"></div>
+  </div>
+  <div class="live" id="live"></div>
 
-  <section>
-    <div class="label"><b>Turn 1</b>Hypothesis breaks</div>
-    <div class="body">
-      <h2>Retail came anyway. The gap was somewhere else.</h2>
-      <p>By day 3 retail was 219x subscribed, with more than 94,000 applications by day 2. The lot size did nothing to demand. In SME issues the "retail" bucket is effectively a mini-HNI bucket, and a lot of it is funded, so a ₹2.5 lakh minimum is not a barrier for the people who actually apply.</p>
-      <p>What stood out instead was the institutional side. QIB was at 0x through day 2. The book was big, but almost nobody who prices risk for a living was in it.</p>
-      <blockquote>The question changed from "how big is the book?" to "who is in the book?"</blockquote>
-    </div>
-  </section>
+  <section class="block" id="out"><p class="empty">Pick an issue above to start.</p></section>
 
-  <section>
-    <div class="label"><b>Logic</b>Ratios</div>
-    <div class="body">
-      <h2>Turning "who is in the book" into numbers</h2>
-      <p>Each category multiple says how hungry one type of investor is. Dividing one by another says whose money is driving the book. I used five ratios:</p>
-      <div class="tbl"><table>
-        <thead><tr><th>Ratio</th><th>What it reads</th><th>Why it might matter</th></tr></thead>
-        <tbody>
-          <tr><td><code>RII / QIB</code></td><td>Crowd demand against institutional demand</td><td>A book carried by retail with no institutions has no one anchoring the price after listing</td></tr>
-          <tr><td><code>NII / QIB</code></td><td>HNI demand against institutions</td><td>HNI bids are often leveraged and flipped on listing day</td></tr>
-          <tr><td><code>NII / RII</code></td><td>HNIs against retail</td><td>Shows whether the heat comes from big tickets or from the crowd</td></tr>
-          <tr><td><code>bHNI / sHNI</code></td><td>Above ₹10 lakh against ₹2 to ₹10 lakh</td><td>Big HNI tickets are the most likely to be funded</td></tr>
-          <tr><td><code>Total / QIB</code></td><td>How much of the headline number institutions explain</td><td>A high total with a low QIB is a hollow headline</td></tr>
-        </tbody>
-      </table></div>
-    </div>
+  <section class="block">
+    <h2>Five closest historical books</h2>
+    <div class="tbl" id="comps"></div>
+    <p class="note">Closeness is distance on log QIB, NII, retail and total multiples, within the same segment. Open and close are listing-day returns against the issue price. On a phone, QIB, NII and retail columns are hidden.</p>
   </section>
+</div></main>
 
-  <section>
-    <div class="label"><b>Evidence</b>Comparables</div>
-    <div class="body">
-      <h2>What good books looked like</h2>
-      <p><strong>Mainboard.</strong> The recent big listings were all led by institutions. Jio Platforms (QIB 70x, RII/QIB 0.04x) listed +21%. Rentomojo (QIB 177x, RII/QIB 0.09x) listed +19%, after QIB jumped from 0.45x on day 2 to 177x on day 3. BLS Polymers (QIB 200x) listed +65% on 3 November. The pattern: retail small relative to QIB, listing around +20% or better, and the gain held.</p>
-      <p><strong>SME.</strong> I pulled the best SME books of 2026 and a few flops. The winners (Gallard, Current Infraprojects, Exato, Shyam Dhani, Austere, BLT) all had QIB above 80x, RII/QIB between 1.5x and 8x and a total above 350x. The flops (Shellz, Core4, Wiscon) all had a total below 60x. Core4 also had QIB near zero with NII/RII above 4x, and listed at -20%.</p>
-      <p>Maxwell did not fit either group. Its RII/QIB was 62x, about eight times the most retail-heavy winner, and its total of 168x sat between the flops and the winners.</p>
-    </div>
-  </section>
+<main id="view-method" hidden><div class="wrap"><article class="prose">
+  <div class="kicker">Method · November 2026</div>
+  <h1>Reading the IPO book</h1>
+  <p class="lede">How one question about an SME IPO became a framework for reading who is in a book, why I backtested it instead of trusting it, and the logic behind each step.</p>
 
-  <section>
-    <div class="label"><b>Framework</b>v1 rules</div>
-    <div class="body">
-      <h2>The working framework</h2>
-      <div class="tbl"><table>
-        <thead><tr><th>Segment</th><th>Signal</th><th>Expected outcome</th></tr></thead>
-        <tbody>
-          <tr><td>SME</td><td>QIB &gt; 80x, RII/QIB 1.5 to 8x, total &gt; 350x</td><td>Strong listing</td></tr>
-          <tr><td>SME</td><td>Total &lt; 60x</td><td>Flat or negative</td></tr>
-          <tr><td>SME</td><td>QIB ~0, NII/RII &gt; 4x</td><td>High discount risk</td></tr>
-          <tr><td>SME</td><td>QIB ~0, heavy retail and HNI</td><td>Untested (Maxwell, Carver Roboweld)</td></tr>
-          <tr><td>SME</td><td>RII/QIB far above 8x on a big book</td><td>Outlier: listing pop, then fade</td></tr>
-          <tr><td>Mainboard</td><td>RII/QIB &lt; 0.1x (QIB-led)</td><td>About +20%, holds or extends</td></tr>
-        </tbody>
-      </table></div>
-      <p>The call on Maxwell from this framework: a listing pop driven by GMP (₹70 to ₹80, 44% to 50%), but the highest fade risk of anything I had looked at.</p>
-    </div>
-  </section>
+  <div class="step">
+    <div class="tag">01 The question</div>
+    <h2>Would a ₹2.5 lakh ticket keep retail away?</h2>
+    <p>Maxwell Engineering Solutions came to the NSE SME platform at ₹150 to ₹158 with a lot of 800 shares. Retail had to apply for 2 lots, so the minimum application was <span class="num">₹2,52,800</span>. The starting hypothesis: a ticket that large should keep small investors out and leave the issue undersubscribed.</p>
+    <p>The goal was to use subscription by category (QIB, NII, retail, in multiples) to predict how it would list on 6 November.</p>
+  </div>
 
-  <section>
-    <div class="label"><b>Turn 2</b>Why backtest</div>
-    <div class="body">
-      <h2>Ten examples are a story, not evidence</h2>
-      <p>Three things made me distrust my own rules:</p>
-      <ul>
-        <li><strong>Selection bias.</strong> The SME winners came from a "highest subscription of 2026" list. Of course they had big books. I never saw the big books that flopped.</li>
-        <li><strong>Conflicting outside evidence.</strong> SEBI found that subscription predicts listing gains on the mainboard but not on SME. Another analysis found 46% of 294 SME IPOs subscribed above 100x trade below issue.</li>
-        <li><strong>The rules came from the same cases they explained.</strong> A rule only means something if it works on IPOs it was not built from.</li>
-      </ul>
-      <p>So the job became: run every rule against every IPO I can get data for, keep SME and mainboard apart, and see which rules survive.</p>
-    </div>
-  </section>
+  <div class="step">
+    <div class="tag">02 Hypothesis breaks</div>
+    <h2>Retail came anyway. The gap was somewhere else.</h2>
+    <p>By day 3 retail was 219x subscribed, with more than 94,000 applications by day 2. In SME issues the retail bucket behaves like a mini HNI bucket, much of it funded, so a ₹2.5 lakh minimum is no barrier for the people who actually apply.</p>
+    <p>What stood out was the institutional side. QIB sat at 0x through day 2. The book was big, but almost nobody who prices risk for a living was in it.</p>
+    <blockquote>The question changed from "how big is the book?" to "who is in the book?"</blockquote>
+  </div>
 
-  <section>
-    <div class="label"><b>Logic</b>Backtest design</div>
-    <div class="body">
-      <h2>How the test is built</h2>
-      <div class="flow">
-        <div><strong>Collect.</strong> SME 2017 to Jan 2024 and mainboard 2009 to 2023 from a public HuggingFace dataset (built from chittorgarh), all of 2026 from chittorgarh, and mainboard 2024 to 2025 from NSE data via Fidus. In total, 756 listed SME and 673 mainboard IPOs.</div>
-        <div><strong>Use the numbers an investor sees before applying.</strong> Subscription is taken from live bids at the close of the issue, not the post-rejection allotment figures. For Core4 the two differ a lot: 5.06x QIB live against 2.71x after rejections.</div>
-        <div><strong>Throw out numbers that are not final.</strong> The old mainboard data stores day-by-day snapshots that usually stop before the last day (Tata Technologies: 15x on day 2 against 69x final). Category ratios are kept only where they match the final total.</div>
-        <div><strong>Keep SME and mainboard separate.</strong> Their investor bases, lot sizes and listing rules differ. NSE SME also caps the listing open at +90%.</div>
-        <div><strong>Split in-sample from out-of-sample.</strong> 2026 is where the framework came from, so it is in sample. Everything before 2026 is the real test.</div>
-        <div><strong>Score each rule on outcomes.</strong> Median listing open and close, the share that opened above issue, the share that opened +20% or more, and the share that closed below its own open (intraday fade).</div>
-        <div><strong>Compare against simple baselines.</strong> Does a rule beat total subscription alone? Does anything beat GMP?</div>
-      </div>
-    </div>
-  </section>
+  <div class="step">
+    <div class="tag">03 Ratios</div>
+    <h2>Turning "who is in the book" into numbers</h2>
+    <p>Each category multiple says how hungry one type of investor is. Dividing one by another says whose money drives the book.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Ratio</th><th>Reads</th><th>Why it might matter</th></tr></thead>
+      <tbody>
+        <tr><td><code>RII / QIB</code></td><td>Crowd against institutions</td><td>A retail book with no institutions has no one anchoring price after listing</td></tr>
+        <tr><td><code>NII / QIB</code></td><td>HNIs against institutions</td><td>HNI bids are often leveraged and flipped on day one</td></tr>
+        <tr><td><code>NII / RII</code></td><td>HNIs against retail</td><td>Big tickets or the crowd</td></tr>
+        <tr><td><code>bHNI / sHNI</code></td><td>Above ₹10L against ₹2L to ₹10L</td><td>Big HNI tickets are the most likely to be funded</td></tr>
+        <tr><td><code>Total / QIB</code></td><td>How much of the headline institutions explain</td><td>High total with low QIB is a hollow headline</td></tr>
+      </tbody>
+    </table></div>
+  </div>
 
-  <section>
-    <div class="label"><b>Result</b>What held</div>
-    <div class="body">
-      <h2>What survived and what did not</h2>
-      <div class="tbl"><table>
-        <thead><tr><th>Rule</th><th class="r">n</th><th class="r">Result</th><th>Verdict</th></tr></thead>
-        <tbody>
-          <tr><td>SME strong book (QIB &gt; 80, RII/QIB 1.5 to 8, total &gt; 350)</td><td class="r">14</td><td class="r">median open +90%, all positive</td><td><span class="pill ok">Holds</span> but the ratio conditions add nothing: every SME book above 350x listed up</td></tr>
-          <tr><td>SME total &lt; 60x</td><td class="r">141</td><td class="r">median open +1.4%</td><td><span class="pill ok">Holds in 2026</span> softer before (median +12%); the real cliff is below 10x</td></tr>
-          <tr><td>SME QIB ~0, NII/RII &gt; 4x</td><td class="r">5</td><td class="r">open +1.2%, close -2.3%</td><td><span class="pill mix">Weak support</span> too few cases</td></tr>
-          <tr><td>SME QIB ~0 with a big book</td><td class="r">0</td><td class="r">no cases</td><td><span class="pill mix">Never happened</span></td></tr>
-          <tr><td>SME RII/QIB &gt; 8x on books over 100x</td><td class="r">9</td><td class="r">median open +120%</td><td><span class="pill no">Wrong at the open</span> these listed highest; 44% did fade intraday</td></tr>
-          <tr><td>Mainboard QIB-led (RII/QIB &lt; 0.1x)</td><td class="r">66</td><td class="r">median close +19%, 82% up</td><td><span class="pill ok">Holds</span> +26% in 2024 to 2025, against +6% for other books</td></tr>
-          <tr><td>Subscription predicts mainboard but not SME</td><td class="r">1,429</td><td class="r">rank corr. 0.57 SME, 0.66 mainboard</td><td><span class="pill no">Wrong</span> it predicts both</td></tr>
-        </tbody>
-      </table></div>
-      <p>The biggest lesson: <strong>total subscription carries almost all the signal.</strong> A one-variable model on total subscription separates +20% listings from the rest with an AUC of 0.91 on 2026 data it never saw. Adding the ratios does not improve SME at all and improves mainboard only slightly (0.92 to 0.93). GMP, where available, already priced the book: listing opens landed on GMP on average.</p>
-      <p>The ratios do tell one real story. Their sign flips between segments. In SME, a heavier retail book goes with a bigger pop. On the mainboard, a QIB-led book does better. The framework had the mainboard right and the SME direction backwards.</p>
-    </div>
-  </section>
+  <div class="step">
+    <div class="tag">04 Comparables</div>
+    <h2>What good books looked like</h2>
+    <p><strong>Mainboard.</strong> Recent big listings were led by institutions. Jio Platforms (QIB 70x, RII/QIB 0.04x) listed +21%. Rentomojo (QIB 177x, RII/QIB 0.09x) listed +19% after QIB jumped from 0.45x on day 2 to 177x on day 3. BLS Polymers (QIB 200x) listed +65%. Retail small relative to QIB, listing near +20% or better, and the gain held.</p>
+    <p><strong>SME.</strong> The best 2026 books (Gallard, Current Infraprojects, Exato, Shyam Dhani, Austere, BLT) all had QIB above 80x, RII/QIB between 1.5x and 8x and total above 350x. The flops (Shellz, Core4, Wiscon) all had total below 60x. Core4 also had QIB near zero with NII/RII above 4x and listed at -20%.</p>
+    <p>Maxwell fit neither group. Its RII/QIB was 62x, about eight times the most retail-heavy winner, and its total of 168x sat between flops and winners.</p>
+  </div>
 
-  <section>
-    <div class="label"><b>Turn 3</b>Maxwell closes</div>
-    <div class="body">
-      <h2>The untested case never arrived</h2>
-      <p>Final bids at 17:55 on 3 November:</p>
-      <div class="book">
-        <div class="cell"><div class="k">QIB</div><div class="v">259.45x</div><div class="s">from ~0x on day 2</div></div>
-        <div class="cell"><div class="k">NII</div><div class="v">857.65x</div><div class="s">bHNI 1,024x · sHNI 524x</div></div>
-        <div class="cell"><div class="k">Retail</div><div class="v">556.09x</div><div class="s">5.07 lakh applications</div></div>
-        <div class="cell"><div class="k">Total</div><div class="v">536.80x</div><div class="s">RII/QIB 2.14x</div></div>
-      </div>
-      <p>Institutions came in on the last day, like Rentomojo. That moves Maxwell from the untested bucket into the strong one, which has listed at a median +90% with no losers in 14 cases. Its five closest historical books opened between +10% and +90%.</p>
-      <p>The lesson for the method: <strong>a book is only comparable to history once bidding has closed.</strong> QIB money arrives late, and day 2 ratios can be completely different from the final ones.</p>
-    </div>
-  </section>
+  <div class="step">
+    <div class="tag">05 Framework</div>
+    <h2>The working rules</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Segment</th><th>Signal</th><th>Expected</th></tr></thead>
+      <tbody>
+        <tr><td>SME</td><td>QIB &gt; 80x, RII/QIB 1.5 to 8x, total &gt; 350x</td><td>Strong listing</td></tr>
+        <tr><td>SME</td><td>Total &lt; 60x</td><td>Flat or negative</td></tr>
+        <tr><td>SME</td><td>QIB near 0, NII/RII &gt; 4x</td><td>Discount risk</td></tr>
+        <tr><td>SME</td><td>QIB near 0, heavy retail and HNI</td><td>Untested</td></tr>
+        <tr><td>SME</td><td>RII/QIB far above 8x on a big book</td><td>Pop, then fade</td></tr>
+        <tr><td>Mainboard</td><td>RII/QIB &lt; 0.1x</td><td>About +20%, holds</td></tr>
+      </tbody>
+    </table></div>
+    <p>The call on Maxwell from these rules: a GMP-driven pop (₹70 to ₹80, 44% to 50%) with the highest fade risk of anything looked at.</p>
+  </div>
 
-  <section>
-    <div class="label"><b>Logic</b>The scanner</div>
-    <div class="body">
-      <h2>Turning the backtest into a tool</h2>
-      <p>The <a href="#scanner">IPO Book Scanner</a> takes any book, live or historical, and answers three questions:</p>
-      <ul>
-        <li><strong>Which framework bucket is it in, and how has that bucket actually listed?</strong> The same rules as the backtest, applied to the four multiples.</li>
-        <li><strong>How did books of the same size list?</strong> Total-subscription bands (SME: under 10x, 10 to 60x, 60 to 100x, 100 to 350x, above 350x), since size turned out to be the strongest signal. It also gives the probability of a +20% open from a logistic model on log total subscription.</li>
-        <li><strong>Which five past books looked most like it?</strong> Distance is measured on the logs of QIB, NII, retail and total, so 10x against 20x counts the same as 100x against 200x. The tool shows how those five listed.</li>
-      </ul>
-      <p>A daily job at 18:00 IST, after bidding closes, re-scrapes the current year, pulls mainboard data from NSE, rebuilds the dataset, reruns the backtest and refreshes the scanner's data. Post-listing prices were dropped to keep the pipeline lean, so the tool covers listing day only.</p>
-    </div>
-  </section>
+  <div class="step">
+    <div class="tag">06 Why backtest</div>
+    <h2>Ten examples are a story, not evidence</h2>
+    <ul>
+      <li><strong>Selection bias.</strong> The SME winners came from a "highest subscription of 2026" list. The big books that flopped were never in view.</li>
+      <li><strong>Conflicting evidence.</strong> SEBI found subscription predicts mainboard listing gains but not SME. Another study found 46% of 294 SME IPOs subscribed above 100x trade below issue.</li>
+      <li><strong>Rules built from the cases they explain.</strong> A rule only means something if it works on IPOs it was not built from.</li>
+    </ul>
+    <p>So: run every rule against every IPO with data, keep SME and mainboard apart, and see what survives.</p>
+  </div>
 
-  <section>
-    <div class="label"><b>Open</b>Limits</div>
-    <div class="body">
-      <h2>What this cannot tell me yet</h2>
-      <ul>
-        <li><strong>SME 2024 and 2025 are missing.</strong> Past years sit behind a paywall and no free source has final SME category data for them.</li>
-        <li><strong>Listing day only.</strong> Whether "fade" shows up over 30 days is untested.</li>
-        <li><strong>Small buckets.</strong> The discount-risk and strong buckets have 5 and 14 cases.</li>
-        <li><strong>Mainboard 2024 to 2025 uses NSE bids only</strong>, which run lower than combined NSE and BSE figures.</li>
-        <li><strong>Next checks:</strong> record Carver Roboweld (4 Nov) and Maxwell (6 Nov) against the scanner's calls, and read Maxwell's RHP for other income, related-party sales and customer concentration before trusting the ~40% margins.</li>
-      </ul>
-      <p class="note">Code, data and full tables: the project repository. For research purposes only; not investment advice.</p>
+  <div class="step">
+    <div class="tag">07 Design</div>
+    <h2>How the test is built</h2>
+    <ol>
+      <li><strong>Collect.</strong> SME 2017 to Jan 2024 and mainboard 2009 to 2023 from a public HuggingFace dataset, all of 2026 from chittorgarh, mainboard 2024 to 2025 from NSE via Fidus. 756 SME and 673 mainboard listings.</li>
+      <li><strong>Use what an investor sees before applying.</strong> Live bids at close, not post-rejection allotment figures. For Core4 these differ a lot: 5.06x QIB live against 2.71x after rejections.</li>
+      <li><strong>Drop numbers that are not final.</strong> Old mainboard data stores daily snapshots that often stop early (Tata Technologies: 15x on day 2 against 69x final). Ratios are kept only where they match the final total.</li>
+      <li><strong>Keep segments apart.</strong> Investor bases, lot sizes and listing rules differ. NSE SME also caps the listing open at +90%.</li>
+      <li><strong>Split in and out of sample.</strong> 2026 is where the rules came from. Everything earlier is the real test.</li>
+      <li><strong>Score on outcomes.</strong> Median open and close, share opening above issue, share opening +20% or more, share closing below its own open.</li>
+      <li><strong>Beat a baseline.</strong> Does a rule beat total subscription alone? Does anything beat GMP?</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="tag">08 Results</div>
+    <h2>What survived</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Rule</th><th class="n">n</th><th>Result</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>SME strong book</td><td class="n">14</td><td>Median open +90%, all positive</td><td><span class="verdict-ok">Holds.</span> Ratios add nothing; every SME book above 350x listed up</td></tr>
+        <tr><td>SME total &lt; 60x</td><td class="n">141</td><td>Median open +1.4%</td><td><span class="verdict-ok">Holds in 2026.</span> Softer before (+12%); the real cliff is below 10x</td></tr>
+        <tr><td>SME low QIB, NII/RII &gt; 4x</td><td class="n">5</td><td>Open +1.2%, close -2.3%</td><td><span class="verdict-mix">Weak.</span> Too few cases</td></tr>
+        <tr><td>SME low QIB, big book</td><td class="n">0</td><td>No cases</td><td><span class="verdict-mix">Never happened</span></td></tr>
+        <tr><td>SME RII/QIB &gt; 8x, book &gt; 100x</td><td class="n">9</td><td>Median open +120%</td><td><span class="verdict-no">Wrong at the open.</span> 44% faded intraday</td></tr>
+        <tr><td>Mainboard QIB-led</td><td class="n">66</td><td>Median close +19%, 82% up</td><td><span class="verdict-ok">Holds.</span> +26% in 2024 to 2025 against +6% for others</td></tr>
+        <tr><td>Subscription predicts mainboard only</td><td class="n">1,429</td><td>Rank corr. 0.57 SME, 0.66 main</td><td><span class="verdict-no">Wrong.</span> It predicts both</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>Total subscription carries almost all the signal.</strong> A one-variable model on total separates +20% listings from the rest with AUC 0.91 on 2026 data it never saw. Ratios add nothing on SME and little on mainboard (0.92 to 0.93). GMP, where available, already priced the book.</p>
+    <p>The ratios tell one real story: their sign flips. In SME a heavier retail book goes with a bigger pop. On mainboard a QIB-led book does better. The framework had mainboard right and the SME direction backwards.</p>
+  </div>
+
+  <div class="step">
+    <div class="tag">09 Maxwell closes</div>
+    <h2>The untested case never arrived</h2>
+    <p>Final bids at 17:55 on 3 November:</p>
+    <div class="book">
+      <div><div class="k">QIB</div><div class="v">259.45x</div><div class="s">from ~0x on day 2</div></div>
+      <div><div class="k">NII</div><div class="v">857.65x</div><div class="s">bHNI 1,024x, sHNI 524x</div></div>
+      <div><div class="k">Retail</div><div class="v">556.09x</div><div class="s">5.07 lakh applications</div></div>
+      <div><div class="k">Total</div><div class="v">536.80x</div><div class="s">RII/QIB 2.14x</div></div>
     </div>
-  </section>
-</div>
-</div>
+    <p>Institutions came in on the last day, as with Rentomojo. That moves Maxwell into the strong bucket: median +90% with no losers in 14 cases. Its five closest books opened between +10% and +90%.</p>
+    <p><strong>A book is only comparable to history once bidding has closed.</strong> QIB money arrives late, and day 2 ratios can look nothing like the final ones.</p>
+  </div>
+
+  <div class="step">
+    <div class="tag">10 The scanner</div>
+    <h2>From backtest to tool</h2>
+    <ul>
+      <li><strong>Bucket.</strong> Which framework rule fires, and how that bucket has listed.</li>
+      <li><strong>Size band.</strong> How books of similar total listed, plus the probability of a +20% open from a logistic model on log total.</li>
+      <li><strong>Neighbours.</strong> The five past books closest on log QIB, NII, retail and total, so 10x against 20x counts the same as 100x against 200x.</li>
+    </ul>
+    <p>A job at 18:00 IST on weekdays re-scrapes the current year, rebuilds the dataset, reruns the backtest and refreshes this site. It covers listing day only.</p>
+  </div>
+
+  <div class="step">
+    <div class="tag">11 Limits</div>
+    <h2>What this cannot tell yet</h2>
+    <ul>
+      <li><strong>SME 2024 and 2025 are missing.</strong> No free source has final category data for them.</li>
+      <li><strong>Listing day only.</strong> Fade over 30 days is untested.</li>
+      <li><strong>Small buckets.</strong> 5 and 14 cases in the risk and strong buckets.</li>
+      <li><strong>Mainboard 2024 to 2025 is NSE bids only</strong>, which run below combined NSE and BSE figures.</li>
+    </ul>
+  </div>
+</article></div></main>
+
+<footer><div class="wrap">
+  <p>For research purposes only. Historical outcomes describe past listings. Nothing here is investment advice or a recommendation to apply for, buy or sell any security.</p>
+  <p>SME rules: Strong (QIB &gt; 80x, retail/QIB 1.5 to 8x, total &gt; 350x), Low QIB HNI-heavy (QIB &lt; 5x, NII/retail &gt; 4x), Low QIB crowd (QIB &lt; 5x, total 100x+), Weak total (&lt; 60x). Mainboard: QIB-led (retail/QIB &lt; 0.1x).</p>
+</div></footer>
 
 <script>
-const EXPECT = {
-  STRONG: ["strong listing", "pos"], LOWQIB_HNI: ["discount risk", "neg"], LOWQIB_CROWD: ["untested: no precedent", "warn"],
-  WEAK_TOTAL: ["flat or negative", "neg"], OTHER: ["no call", ""], QIB_LED: ["~20% listing, holds", "pos"], NO_QIB_QUOTA: ["no QIB quota", ""],
+const BUCKET = {
+  STRONG: ["Strong book", "strong listing", "pos"],
+  LOWQIB_HNI: ["Low QIB, HNI-heavy", "discount risk", "neg"],
+  LOWQIB_CROWD: ["Low QIB, crowd-heavy", "untested, no precedent", "warn"],
+  WEAK_TOTAL: ["Weak total", "flat or negative", "neg"],
+  OTHER: ["No rule fires", "no call", ""],
+  QIB_LED: ["QIB-led", "about +20%, holds", "pos"],
+  NO_QIB_QUOTA: ["No QIB quota", "no call", ""],
 };
 const SME_BANDS = [0, 10, 60, 100, 350, Infinity], MAIN_BANDS = [0, 2, 10, 50, Infinity];
+const NA = '<span class="muted">n/a</span>';
 let D = null, seg = "sme", current = null;
 
 const $ = id => document.getElementById(id);
-const fx = v => v == null || isNaN(v) ? "–" : (v >= 100 ? Math.round(v).toLocaleString("en-IN") : (+v).toFixed(2)) + "x";
-const fp = v => v == null || isNaN(v) ? "–" : `<span class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? "+" : ""}${(+v).toFixed(1)}%</span>`;
-const pc = v => isNaN(v) ? "–" : Math.round(v * 100) + "%";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fx = v => v == null || isNaN(v) ? NA : (v >= 100 ? Math.round(v).toLocaleString("en-IN") : (+v).toFixed(2)) + "x";
+const fp = v => v == null || isNaN(v) ? NA : `<span class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? "+" : ""}${(+v).toFixed(1)}%</span>`;
+const pc = v => isNaN(v) ? NA : Math.round(v * 100) + "%";
 const med = a => { const s = a.filter(x => x != null && !isNaN(x)).sort((x, y) => x - y); if (!s.length) return NaN; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
 function bucket(q, ni, ri, t, segment) {
@@ -361,6 +334,7 @@ function bucket(q, ni, ri, t, segment) {
 }
 
 function setSeg(s) { seg = s; $("segSME").classList.toggle("on", s === "sme"); $("segMain").classList.toggle("on", s === "mainboard"); }
+function markLive() { document.querySelectorAll("#live button").forEach(b => b.classList.toggle("on", !!current && D.live[+b.dataset.i]?.n === current.n)); }
 
 function load(rec, segment) {
   setSeg(segment);
@@ -371,74 +345,72 @@ function load(rec, segment) {
 function summarize(rows) {
   const O = rows.filter(r => r.o != null), C = rows.filter(r => r.c != null), B = rows.filter(r => r.o != null && r.c != null);
   const share = (a, f) => a.length ? a.filter(f).length / a.length : NaN;
-  return {
-    n: rows.length, medOpen: med(O.map(r => r.o)), medClose: med(C.map(r => r.c)),
-    pUp: share(O, r => r.o > 0), p20: share(O, r => r.o >= 20), pCloseUp: share(C, r => r.c > 0),
-    fade: share(B, r => r.c < r.o), nOpen: O.length,
-  };
-}
-
-function statsHTML(title, s) {
-  if (!s.n) return `<p class="note">${title}: no historical cases.</p>`;
-  return `<p class="note" style="margin:14px 0 8px">${title}, n = ${s.n}</p><div class="stats">
-    <div class="stat"><div class="k">Median listing open${s.nOpen < s.n ? ` (n ${s.nOpen})` : ""}</div><div class="v">${fp(s.medOpen)}</div></div>
-    <div class="stat"><div class="k">Median listing close</div><div class="v">${fp(s.medClose)}</div></div>
-    <div class="stat"><div class="k">Opened above issue</div><div class="v">${pc(s.pUp)}</div></div>
-    <div class="stat"><div class="k">Opened +20% or more</div><div class="v">${pc(s.p20)}</div></div>
-    <div class="stat"><div class="k">Closed above issue</div><div class="v">${pc(s.pCloseUp)}</div></div>
-    <div class="stat"><div class="k">Closed below its open</div><div class="v">${pc(s.fade)}</div></div>
-  </div>`;
+  return { n: rows.length, medOpen: med(O.map(r => r.o)), medClose: med(C.map(r => r.c)),
+    pUp: share(O, r => r.o > 0), p20: share(O, r => r.o >= 20), pCloseUp: share(C, r => r.c > 0), fade: share(B, r => r.c < r.o) };
 }
 
 function run() {
+  if (!D) return;
+  markLive();
   const q = parseFloat($("q").value), ni = parseFloat($("ni").value), ri = parseFloat($("ri").value), t = parseFloat($("t").value);
-  if (isNaN(t)) { $("out").innerHTML = `<p class="empty">Total subscription is required.</p>`; return; }
+  if (isNaN(t) || t <= 0) { $("out").innerHTML = `<p class="empty">Enter at least the total subscription.</p>`; $("comps").innerHTML = ""; return; }
   const hist = D[seg].filter(r => r.t != null && (r.o != null || r.c != null));
   const b = bucket(isNaN(q) ? null : q, ni, ri, t, seg);
-  const [exp, cls] = EXPECT[b] || ["", ""];
+  const [label, exp, cls] = BUCKET[b];
   const bands = seg === "sme" ? SME_BANDS : MAIN_BANDS;
   const bi = bands.findIndex((x, i) => t > x && t <= bands[i + 1]);
   const lo = bands[bi], hi = bands[bi + 1];
-  const inBand = hist.filter(r => r.t > lo && r.t <= hi);
-  const inBucket = hist.filter(r => bucket(r.q, r.ni, r.ri, r.t, seg) === b && (seg !== "sme" || r.q != null || b === "NO_QIB_QUOTA"));
+  const inBand = summarize(hist.filter(r => r.t > lo && r.t <= hi));
+  const inBucket = summarize(hist.filter(r => bucket(r.q, r.ni, r.ri, r.t, seg) === b && (seg !== "sme" || r.q != null || b === "NO_QIB_QUOTA")));
   const m = D.model[seg], p = 1 / (1 + Math.exp(-(m.intercept + m.coef_log_total * Math.log(t))));
-  const name = current && current.n ? current.n : "This book";
-  const ratio = (a, c) => (isNaN(a) || isNaN(c) || !c) ? "–" : (a / c).toFixed(2) + "x";
+  const name = current && current.n ? esc(current.n) : "Your book";
+  const ratio = (a, c) => (isNaN(a) || isNaN(c) || !c) ? NA : (a / c).toFixed(2) + "x";
   const bandLabel = hi === Infinity ? `above ${lo}x` : `${lo}x to ${hi}x`;
+  const row = (k, f) => `<tr><td>${k}</td><td class="n">${f(inBucket)}</td><td class="n">${f(inBand)}</td></tr>`;
 
   $("out").innerHTML = `
-    <h2>${name}</h2>
-    <div class="verdict">${b} <span class="tag ${cls}">framework expects: ${exp}</span></div>
-    <div class="chips">
-      <span class="chip">Retail/QIB <b>${ratio(ri, q)}</b></span><span class="chip">NII/QIB <b>${ratio(ni, q)}</b></span>
-      <span class="chip">NII/Retail <b>${ratio(ni, ri)}</b></span><span class="chip">Total/QIB <b>${ratio(t, q)}</b></span>
-      <span class="chip">P(open ≥ +20%) from total alone <b>${pc(p)}</b></span>
+    <div class="result-head"><h3>${name}</h3><div class="call">${label} · framework expects <b class="${cls}">${exp}</b></div></div>
+    <div class="figs">
+      <div class="fig"><div class="k">P(open +20%), total only</div><div class="v">${pc(p)}</div></div>
+      <div class="fig"><div class="k">Retail / QIB</div><div class="v">${ratio(ri, q)}</div></div>
+      <div class="fig"><div class="k">NII / QIB</div><div class="v">${ratio(ni, q)}</div></div>
+      <div class="fig"><div class="k">NII / Retail</div><div class="v">${ratio(ni, ri)}</div></div>
     </div>
-    ${statsHTML(`Same framework bucket (${b})`, summarize(inBucket))}
-    ${statsHTML(`Same total band (${bandLabel})`, summarize(inBand))}
+    <div class="tbl" style="margin-top:8px"><table>
+      <thead><tr><th></th><th class="n">Same bucket</th><th class="n">Same size</th></tr></thead>
+      <tbody>
+        ${row("Past listings", s => s.n.toLocaleString("en-IN"))}
+        ${row("Median open", s => fp(s.medOpen))}
+        ${row("Median close", s => fp(s.medClose))}
+        ${row("Opened above issue", s => pc(s.pUp))}
+        ${row("Opened +20% or more", s => pc(s.p20))}
+        ${row("Closed above issue", s => pc(s.pCloseUp))}
+        ${row("Closed below its open", s => pc(s.fade))}
+      </tbody></table></div>
+    <p class="note">Same bucket: ${label}. Same size: total ${bandLabel}.</p>
     ${seg === "sme" && q < 5 && t >= 100 ? `<p class="note">No SME in the data has QIB under 5x with total of 100x or more. This book is outside the backtest's range.</p>` : ""}`;
 
-  // nearest five on log multiples
   const L = v => Math.log(Math.max(v, 0.01));
   const full = ![q, ni, ri].some(isNaN);
   const cand = hist.filter(r => (!current || r.n !== current.n) && (full ? [r.q, r.ni, r.ri].every(v => v != null && v > 0) : true));
   const dist = r => full ? Math.hypot(L(r.q) - L(q), L(r.ni) - L(ni), L(r.ri) - L(ri), L(r.t) - L(t)) : Math.abs(L(r.t) - L(t));
-  const top = cand.map(r => [dist(r), r]).sort((a, b) => a[0] - b[0]).slice(0, 5);
-  const cs = summarize(top.map(x => x[1]));
-  $("comps").innerHTML = `<table><thead><tr><th>Company</th><th>Year</th><th>QIB</th><th>NII</th><th>Retail</th><th>Total</th><th>Open</th><th>Close</th></tr></thead><tbody>
-    <tr style="font-weight:600"><td>${name} (input)</td><td></td><td>${fx(q)}</td><td>${fx(ni)}</td><td>${fx(ri)}</td><td>${fx(t)}</td><td></td><td></td></tr>
-    ${top.map(([d, r]) => `<tr><td>${r.n}</td><td>${r.y ?? ""}</td><td>${fx(r.q)}</td><td>${fx(r.ni)}</td><td>${fx(r.ri)}</td><td>${fx(r.t)}</td><td>${fp(r.o)}</td><td>${fp(r.c)}</td></tr>`).join("")}
-    <tr style="font-weight:600"><td>Median of the 5</td><td></td><td></td><td></td><td></td><td></td><td>${fp(cs.medOpen)}</td><td>${fp(med(top.map(x => x[1].c)))}</td></tr>
-  </tbody></table>${full ? "" : `<p class="note">QIB, NII or retail missing, so comparables are matched on total only.</p>`}`;
+  const top = cand.map(r => [dist(r), r]).sort((a, b) => a[0] - b[0]).slice(0, 5).map(x => x[1]);
+  $("comps").innerHTML = `<table><thead><tr><th>Company</th><th class="n hm">QIB</th><th class="n hm">NII</th><th class="n hm">Retail</th><th class="n">Total</th><th class="n">Open</th><th class="n">Close</th></tr></thead><tbody>
+    <tr class="me"><td class="name">${name}</td><td class="n hm">${fx(q)}</td><td class="n hm">${fx(ni)}</td><td class="n hm">${fx(ri)}</td><td class="n">${fx(t)}</td><td class="n"></td><td class="n"></td></tr>
+    ${top.map(r => `<tr><td class="name">${esc(r.n)}${r.y ? `<span class="yr">${r.y}</span>` : ""}</td><td class="n hm">${fx(r.q)}</td><td class="n hm">${fx(r.ni)}</td><td class="n hm">${fx(r.ri)}</td><td class="n">${fx(r.t)}</td><td class="n">${fp(r.o)}</td><td class="n">${fp(r.c)}</td></tr>`).join("")}
+    <tr class="sum"><td>Median of five</td><td class="hm"></td><td class="hm"></td><td class="hm"></td><td></td><td class="n">${fp(med(top.map(r => r.o)))}</td><td class="n">${fp(med(top.map(r => r.c)))}</td></tr>
+  </tbody></table>${full ? "" : `<p class="note">QIB, NII or retail missing, so neighbours are matched on total only.</p>`}`;
 }
 
 fetch("data.json?v=" + Date.now()).then(r => r.json()).then(d => {
   D = d;
-  $("asof").textContent = `Data as of ${d.generated_at}.`;
   for (const k of ["live", "sme", "mainboard"]) d[k] = d[k].filter(x => typeof x.n === "string" && x.n);
-  const names = [...d.live.map(x => [x.n, "live"]), ...d.sme.map(x => [x.n, "sme"]), ...d.mainboard.map(x => [x.n, "mainboard"])];
-  $("names").innerHTML = names.map(([n]) => `<option value="${n.replace(/"/g, "&quot;")}">`).join("");
-  $("live").innerHTML = d.live.length ? d.live.map((x, i) => `<button data-i="${i}">${x.n}<small>${x.seg} · ${x.st || "closed"} · closes ${x.cd} · total ${fx(x.t)}</small></button>`).join("") : `<p class="empty">No live issues.</p>`;
+  $("asof").textContent = `Data as of ${d.generated_at}.`;
+  const names = [...d.live, ...d.sme, ...d.mainboard].map(x => x.n);
+  $("names").innerHTML = [...new Set(names)].map(n => `<option value="${esc(n)}">`).join("");
+  $("live").innerHTML = d.live.length
+    ? `<span>Live and recent</span>` + d.live.map((x, i) => `<button type="button" data-i="${i}">${esc(x.n.replace(/ (Ltd|Limited)\.?$/i, ""))}<i>${x.seg === "SME" ? "SME" : "Main"} ${x.t != null ? fx(x.t) : ""}</i></button>`).join("")
+    : "";
   $("live").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; const x = d.live[+b.dataset.i]; load(x, x.seg === "SME" ? "sme" : "mainboard"); });
   $("search").addEventListener("change", () => {
     const v = $("search").value.trim().toLowerCase();
@@ -447,20 +419,19 @@ fetch("data.json?v=" + Date.now()).then(r => r.json()).then(d => {
     for (const s of ["sme", "mainboard"]) { const h = d[s].find(x => x.n.toLowerCase() === v); if (h) return load(h, s); }
   });
   const pick = d.live.find(x => /maxwell/i.test(x.n)) || d.live[0];
-  if (pick) load(pick, pick.seg === "SME" ? "sme" : "mainboard");
-});
+  if (pick) load(pick, pick.seg === "SME" ? "sme" : "mainboard"); else run();
+}).catch(() => { $("out").innerHTML = `<p class="empty">Could not load data.</p>`; });
+
+let tmr;
+for (const id of ["q", "ni", "ri", "t"]) $(id).addEventListener("input", () => { current = null; clearTimeout(tmr); tmr = setTimeout(run, 200); });
 $("segSME").onclick = () => { setSeg("sme"); current = null; run(); };
 $("segMain").onclick = () => { setSeg("mainboard"); current = null; run(); };
-$("go").onclick = () => { current = null; run(); };
 
 function route() {
   const v = location.hash === "#method" ? "method" : "scanner";
   $("view-scanner").hidden = v !== "scanner";
   $("view-method").hidden = v !== "method";
-  for (const t of ["scanner", "method"]) {
-    const a = $("tab-" + t);
-    if (t === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
-  }
+  for (const t of ["scanner", "method"]) { const a = $("tab-" + t); if (t === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); }
 }
 window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
 route();
